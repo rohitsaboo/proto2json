@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+# Bazel stuff
+bazel/*
+bazel-out

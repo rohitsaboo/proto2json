@@ -1,0 +1,49 @@
+#! /bin/bash
+
+# Exit if anything fails.
+set -e
+
+# Work from the main repo directory because at times the current working 
+# directory may disappear as it's part of a local commit.
+REPO="$(git rev-parse --show-toplevel)"
+pushd "$REPO" > /dev/null
+
+if [ "$1" == "--include-untracked" ]; then
+  stash_success=$(git stash save --include-untracked "Stash on sync at $(date)")
+else
+  stash_success=$(git stash save "Stash on sync at $(date)")
+fi
+if [ "$stash_success" == "No local changes to save" ]; then
+  stash_success=false
+else
+  stash_success=true
+fi
+
+echo "Rebasing local changes on origin/master ..."
+if ! git pull --rebase origin master; then
+  if $stash_success; then
+    echo
+    echo "Sync failed but your changes are in a stash."
+    echo "Resolve merge issues and run 'git stash pop' to retrieve them."
+    echo
+  else
+    echo
+    echo "If the failure message is:"
+    echo "'The following untracked working tree files would be overwritten by checkout'"
+    echo "Run the following commands:"
+    echo "git stash pop"
+    echo "git sync --include-untracked"
+    echo
+  fi
+  exit 1
+fi
+
+if $stash_success; then
+  git stash apply --index
+  git stash drop
+fi
+
+popd > /dev/null
+echo
+echo "Done."
+echo

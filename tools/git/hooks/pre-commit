@@ -1,0 +1,15 @@
+#! /bin/bash
+
+# Run clang-format
+for file in `git diff-index --cached --name-only HEAD`; do
+  if [ -f "$file" ]; then
+    case "${file##*.}" in
+      "c"|"cc"|"cpp"|"h"|"hpp"|"java"|"proto")
+        clang-format -i --style=file "$file"
+        git add "$file"
+      	;;
+      "*")
+      	;;
+    esac
+  fi
+done
