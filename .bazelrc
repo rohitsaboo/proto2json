@@ -1,0 +1,5 @@
+build --symlink_prefix=bazel/
+build --per_file_copt=//...@-Wall,-Wextra --cxxopt=-std=c++14
+build --per_file_copt=external/\*,//external/...@-w
+
+build:asan --copt=-fsanitize=address --copt=-fno-omit-frame-pointer --linkopt=-fsanitize=address
