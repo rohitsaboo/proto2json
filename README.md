@@ -1,8 +1,10 @@
-Setup
------
+Setup and Build
+---------------
 
 Run `./setup.sh` to install the necessary dependencies in order to run this 
 tool.
+
+Run `./build.sh` to build the tool.
 
 Running
 -------

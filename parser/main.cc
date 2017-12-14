@@ -26,72 +26,76 @@ DEFINE_string(schema, "", "The protobuf schema");
 DEFINE_string(in, "", "The serialized protobuf file");
 DEFINE_string(root, "", "The root protobuf message");
 DEFINE_string(out, "", "The json output file");
+DEFINE_string(deps, "", "Any additional flags to pass to protoc such as additional files and include paths.");
 
 template <class T>
 bool ReadProtoFromFile(const string& file_name, T* message) {
-    std::ifstream ifs(file_name, std::ifstream::binary);
-    if (!message->ParseFromIstream(&ifs)) {
-        return false;
-    }
-    ifs.close();
-    return true;
+  std::ifstream ifs(file_name, std::ifstream::binary);
+  if (!ifs) {
+    return false;
+  }
+  if (!message->ParseFromIstream(&ifs)) {
+    return false;
+  }
+  ifs.close();
+  return true;
 }
 
 void WriteStringToFile(const string& file_name, const string& string_data) {
-    std::ofstream out(file_name, std::ofstream::binary);
-    out << string_data;
-    out.close();
+  std::ofstream out(file_name, std::ofstream::binary);
+  out << string_data;
+  out.close();
 }
 
 const Descriptor* GetDescriptor(const FileDescriptorSet& file_descriptor_set, const string& root, DescriptorPool* pool) {
-    const FileDescriptor* file_descriptor = pool->BuildFile(file_descriptor_set.file(0));
-    for (int i = 0; i != file_descriptor->message_type_count(); i++) {
-        const Descriptor* descriptor = file_descriptor->message_type(i);
-        if (descriptor->name() == root) {
-            return descriptor;
-        }
+  const FileDescriptor* file_descriptor = pool->BuildFile(file_descriptor_set.file(0));
+  for (int i = 0; i != file_descriptor->message_type_count(); i++) {
+    const Descriptor* descriptor = file_descriptor->message_type(i);
+    if (descriptor->name() == root) {
+      return descriptor;
     }
-    return nullptr;
+  }
+  return nullptr;
 }
 
 int main(int argc, char* argv[]) {
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    google::InitGoogleLogging(argv[0]);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
 
-    // Generate the descriptor for the proto schema.
-    const string descriptor_file = "/tmp/" + std::to_string(std::hash<string>()(FLAGS_schema)) + ".pb";
+  // Generate the descriptor for the proto schema.
+  const string descriptor_file = "/tmp/" + std::to_string(std::hash<string>()(FLAGS_schema)) + ".pb";
 
-    if (system((FLAGS_protoc + " --descriptor_set_out=" + descriptor_file + " " + FLAGS_schema).c_str()) != 0) {
-        LOG(ERROR) << "Unable to parse proto file [" << FLAGS_schema + "].";
-        return 1;
-    }
+  if (system((FLAGS_protoc + " --descriptor_set_out=" + descriptor_file + " " + FLAGS_schema + " " + FLAGS_deps).c_str()) != 0) {
+    LOG(ERROR) << "Unable to parse proto file [" << FLAGS_schema + "].";
+    return 1;
+  }
 
-    FileDescriptorSet file_descriptor_set;
-    if (!ReadProtoFromFile(descriptor_file, &file_descriptor_set)) {
-        LOG(ERROR) << "Unable to read generated descriptor set.";
-        return 1;
-    }
+  FileDescriptorSet file_descriptor_set;
+  if (!ReadProtoFromFile(descriptor_file, &file_descriptor_set)) {
+    LOG(ERROR) << "Unable to read generated descriptor set.";
+    return 1;
+  }
 
-    DescriptorPool descriptor_pool;
-    const Descriptor* descriptor = GetDescriptor(file_descriptor_set, FLAGS_root, &descriptor_pool);
-    if (descriptor == nullptr) {
-        LOG(ERROR) << "Unable to find root message [" << FLAGS_root << "].";
-        return 1;
-    }
+  DescriptorPool descriptor_pool;
+  const Descriptor* descriptor = GetDescriptor(file_descriptor_set, FLAGS_root, &descriptor_pool);
+  if (descriptor == nullptr) {
+    LOG(ERROR) << "Unable to find root message [" << FLAGS_root << "].";
+    return 1;
+  }
 
-    // Create a dynamic message from the descriptor.
-    DynamicMessageFactory factory;
-    Message* message = factory.GetPrototype(descriptor)->New();
+  // Create a dynamic message from the descriptor.
+  DynamicMessageFactory factory;
+  Message* message = factory.GetPrototype(descriptor)->New();
 
-    // Parse and dump the serialized file.
-    if (!ReadProtoFromFile(FLAGS_in, message)) {
-        LOG(ERROR) << "Unable to read serialized proto file [" << FLAGS_in << "].";
-        return 1;
-    }
+  // Parse and dump the serialized file.
+  if (!ReadProtoFromFile(FLAGS_in, message)) {
+    LOG(ERROR) << "Unable to read serialized proto file [" << FLAGS_in << "].";
+    return 1;
+  }
 
-    string out;
-    MessageToJsonString(*message, &out);
-    WriteStringToFile(FLAGS_out, out);
+  string out;
+  MessageToJsonString(*message, &out);
+  WriteStringToFile(FLAGS_out, out);
 
-    return 0;
+  return 0;
 }

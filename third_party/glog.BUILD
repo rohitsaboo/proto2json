@@ -28,6 +28,7 @@ cc_library(
     copts = [
         "-Wno-sign-compare",
         "-U_XOPEN_SOURCE",
+        "-DHAVE_LIB_GFLAGS",
     ],
     includes = ["./src"],
     linkopts = ["-lpthread"] + select({
